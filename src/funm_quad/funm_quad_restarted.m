@@ -41,7 +41,8 @@ end
 
 % A fixed sketched method uses this same S for every restart cycle.
 S = [];
-if param.mode == "fixed" && ~strcmp(param.arnoldi, 'arnoldi')
+if param.mode == "fixed" && ...
+        (strcmp(param.arnoldi, 'sarnoldi') || strcmp(param.arnoldi, 'shmarnoldi'))
     S = sketching_mat(param.sketching_size, N, param.sketching_mat_type);
 end
 
@@ -84,6 +85,9 @@ for k = 1 : param.max_restarts
             case 'arnoldi'
                 [V, v, H, eta, beta, succ_flag, num_oracle] = ...
                     arnoldi_fix(A, V, m + ell, H_init, ell + 1, param);
+            case 'hmarnoldi'
+                [V, v, H, eta, beta, succ_flag, num_oracle] = ...
+                    hmarnoldi_fix(A, V, m + ell, H_init, ell + 1, param);
             case 'sarnoldi'
                 [V, v, H, eta, beta, succ_flag, num_oracle] = ...
                     sarnoldi_fix(S, A, V, m + ell, H_init, ell + 1, param);
