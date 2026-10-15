@@ -1,17 +1,19 @@
-function [w, H, h, Sw] = arnoldi_last_sorth_update(V, m, w, H, h, SV, Sw)
-%ARNOLDI_LAST_SORTH_UPDATE Orthogonalize using the supplied sketch images.
+function arnoldi_data = arnoldi_last_sorth_update(arnoldi_data)
 
-c = SV \ Sw;
-w = w - V(:, 1 : m) * c;
-Sw = Sw - SV * c;
-H(1 : m, m) = H(1 : m, m) + c * h;
-norm_w = norm(Sw);
-if norm_w == 0
-    w(:) = 0;
-    h = 0;
+m = size(arnoldi_data.H, 1);
+c = arnoldi_data.SV \ arnoldi_data.sv;
+arnoldi_data.v = arnoldi_data.v - arnoldi_data.V(:, 1 : m) * c;
+arnoldi_data.sv = arnoldi_data.sv - arnoldi_data.SV * c;
+arnoldi_data.H(1 : m, m) = arnoldi_data.H(1 : m, m) + c * arnoldi_data.h;
+norm_v = norm(arnoldi_data.v);
+if norm_v == 0
+    arnoldi_data.v(:) = 0;
+    arnoldi_data.sv(:) = 0;
+    arnoldi_data.h = 0;
 else
-    w = w / norm_w;
-    h = h * norm_w;
+    arnoldi_data.v = arnoldi_data.v / norm_v;
+    arnoldi_data.sv = arnoldi_data.sv / norm_v;
+    arnoldi_data.h = arnoldi_data.h * norm_v;
 end
 
 end

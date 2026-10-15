@@ -1,75 +1,73 @@
-function [V, lastv, H, h, beta, succ_flag, num_oracle] = ...
-    hmarnoldi_fix(A, V, m, H, start_ind, param)
-%HMARNOLDI_FIX Harmonic Arnoldi with full-space Euclidean pairings.
+function [arnoldi_data, succ_flag, num_oracle] = ...
+    hmarnoldi_fix(A, arnoldi_data, m, start_ind, param)
 
-H(m + 1, m) = 0;
-if size(V, 2) < m
-    V(:, m) = 0;
+if ~isa(A, 'function_handle')
+    op_A = @(x) A * x;
+else
+    op_A = @(x) A(x);
+end
+
+arnoldi_data.H(m + 1, m) = 0;
+if size(arnoldi_data.V, 2) < m
+    arnoldi_data.V(:, m) = 0;
+end
+if size(arnoldi_data.Z, 2) < m
+    arnoldi_data.Z(:, m) = 0;
 end
 trunc = param.truncation_length;
 succ_flag = true;
 num_oracle = 0;
-ell = start_ind - 1;
+m_init = start_ind - 1;
 
-Z = zeros(size(V, 1), m);
-lastv = V(:, start_ind);
-beta = norm(lastv);
-if beta == 0
+arnoldi_data.beta = norm(arnoldi_data.v);
+if arnoldi_data.beta == 0
     succ_flag = false;
-    h = 0;
-    H = H(1 : ell, 1 : ell);
-    V = V(:, 1 : ell);
+    arnoldi_data.h = 0;
+    arnoldi_data.H = arnoldi_data.H(1 : m_init, 1 : m_init);
+    arnoldi_data.V = arnoldi_data.V(:, 1 : m_init);
+    arnoldi_data.Z = arnoldi_data.Z(:, 1 : m_init);
     return
 end
-lastv = lastv / beta;
-V(:, start_ind) = lastv;
-H(start_ind, 1 : start_ind - 1) = beta * H(start_ind, 1 : start_ind - 1);
-if ell > 0
-    % Reconstruct A*Vprefix from the seeded relation, without A calls.
-    % The joint dual satisfies Zprefix' * Vprefix = I.
-    Q = V(:, 1 : start_ind) * H(1 : start_ind, 1 : ell);
-    G = V(:, 1 : ell)' * Q;
-    Z(:, 1 : ell) = Q / G;
-end
+arnoldi_data.v = arnoldi_data.v / arnoldi_data.beta;
+arnoldi_data.V(:, start_ind) = arnoldi_data.v;
+arnoldi_data.H(start_ind, 1 : m_init) = arnoldi_data.beta * arnoldi_data.H(start_ind, 1 : m_init);
 
 for j = start_ind : m
-    if isnumeric(A)
-        lastv = A * lastv;
-    else
-        lastv = A(lastv);
-    end
+    arnoldi_data.v = op_A(arnoldi_data.v);
     num_oracle = num_oracle + 1;
 
-    rho = lastv' * V(:, j);
-    if rho == 0 || abs(rho) < eps * norm(lastv) * norm(V(:, j))
+    rho = arnoldi_data.v' * arnoldi_data.V(:, j);
+    if abs(rho) <= eps * norm(arnoldi_data.v) * norm(arnoldi_data.V(:, j))
         succ_flag = false;
         m = j;
-        H(j + 1, j) = 0;
+        arnoldi_data.H(j + 1, j) = 0;
         break
     end
-    Z(:, j) = lastv / conj(rho);
+    arnoldi_data.Z(:, j) = arnoldi_data.v / conj(rho);
 
     j_trunc_start = max(1, j - trunc + 1);
     for i = j_trunc_start : j
-        ip = Z(:, i)' * lastv;
-        H(i, j) = H(i, j) + ip;
-        lastv = lastv - V(:, i) * ip;
+        h_i_j = arnoldi_data.Z(:, i)' * arnoldi_data.v;
+        arnoldi_data.H(i, j) = arnoldi_data.H(i, j) + h_i_j;
+        arnoldi_data.v = arnoldi_data.v - arnoldi_data.V(:, i) * h_i_j;
     end
 
-    H(j + 1, j) = norm(lastv);
-    if H(j + 1, j) == 0 || abs(H(j + 1, j)) < j * eps * norm(H(1 : j + 1, j))
+    arnoldi_data.H(j + 1, j) = norm(arnoldi_data.v);
+    if abs(arnoldi_data.H(j + 1, j)) <= j * eps * norm(arnoldi_data.H(1 : j + 1, j))
         succ_flag = false;
         m = j;
         break
     end
-    lastv = lastv / H(j + 1, j);
+
+    arnoldi_data.v = arnoldi_data.v / arnoldi_data.H(j + 1, j);
     if j < m
-        V(:, j + 1) = lastv;
+        arnoldi_data.V(:, j + 1) = arnoldi_data.v;
     end
 end
 
-h = H(m + 1, m);
-H = H(1 : m, 1 : m);
-V = V(:, 1 : m);
+arnoldi_data.h = arnoldi_data.H(m + 1, m);
+arnoldi_data.H = arnoldi_data.H(1 : m, 1 : m);
+arnoldi_data.V = arnoldi_data.V(:, 1 : m);
+arnoldi_data.Z = arnoldi_data.Z(:, 1 : m);
 
 end

@@ -1,16 +1,16 @@
-function [w, H, h] = arnoldi_last_orth_update(V, m, w, H, h)
-%ARNOLDI_LAST_ORTH_UPDATE Orthogonalize the final vector against V.
+function arnoldi_data = arnoldi_last_orth_update(arnoldi_data)
 
-c = V(:, 1 : m) \ w;
-w = w - V(:, 1 : m) * c;
-H(1 : m, m) = H(1 : m, m) + c * h;
-norm_w = norm(w);
-if norm_w == 0
-    w(:) = 0;
-    h = 0;
+m = size(arnoldi_data.H, 1);
+c = arnoldi_data.V(:, 1 : m) \ arnoldi_data.v;
+arnoldi_data.v = arnoldi_data.v - arnoldi_data.V(:, 1 : m) * c;
+arnoldi_data.H(1 : m, m) = arnoldi_data.H(1 : m, m) + c * arnoldi_data.h;
+norm_v = norm(arnoldi_data.v);
+if norm_v == 0
+    arnoldi_data.v(:) = 0;
+    arnoldi_data.h = 0;
 else
-    w = w / norm_w;
-    h = h * norm_w;
+    arnoldi_data.v = arnoldi_data.v / norm_v;
+    arnoldi_data.h = arnoldi_data.h * norm_v;
 end
 
 end
