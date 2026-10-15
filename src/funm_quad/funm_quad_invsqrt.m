@@ -1,4 +1,5 @@
 function [f, info] = funm_quad_invsqrt(A, b, param)
+% f = A^(-1 /2) * b
 
 initial_action = @(H, rhs) sqrtm(H) \ rhs;
 quad_action = @invsqrt_quad_action;
