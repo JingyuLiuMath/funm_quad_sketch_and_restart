@@ -1,10 +1,10 @@
-function [ell, U, T, D] = thick_quad(U, T, D, number_thick)
+function [ell, U, T, evT] = thick_quad(U, T, evT, number_thick)
 %THICK_QUAD Retain modes with the smallest absolute real parts.
 % A selected real Schur block is retained in full, including conjugate pairs.
 
-number_thick = min(number_thick, numel(D));
-[~, ind] = sort(abs(real(D)), 'ascend');
-selected = false(size(D));
+number_thick = min(number_thick, numel(evT));
+[~, ind] = sort(abs(real(evT)), 'ascend');
+selected = false(size(evT));
 selected(ind(1:number_thick)) = true;
 
 if isreal(T)
@@ -21,6 +21,6 @@ end
 
 ell = sum(selected);
 [U, T] = ordschur(U, T, selected);
-D = ordeig(T);
+evT = ordeig(T);
 
 end

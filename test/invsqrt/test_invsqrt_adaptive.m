@@ -20,12 +20,11 @@ F_exact = Q * (B_hat ./ sqrt(lambda)) * Q';
 f_exact = F_exact(:);
 
 param = struct();
-param.restart_length = 100;
+param.krylov_dim = 100;
 param.max_restarts = 30;
-param.tol = 1e-12;
+param.quad_tol = 1e-12;
 param.max_num_quad_points = 512;
 param.stopping_accuracy = 1e-10;
-param.verbose = 0;
 param.thick = false;
 param.number_thick = 5;
 param.exact = f_exact;
@@ -48,7 +47,7 @@ fprintf('  iteration number: %d\n', info_last_orth.iter);
 fprintf('  relative error: %.1e\n', err_last_orth);
 fprintf('  matrix-vector products: %d\n', sum(info_last_orth.num_oracle));
 fprintf('  Arnoldi time: %.1e\n', info_last_orth.t_arnoldi);
-fprintf('  quadrature time: %.1e\n', info_last_orth.t_quadrature);
+fprintf('  quadrature time: %.1e\n', info_last_orth.t_funm_quad);
 
 % Harmonic last-vector correction.
 rng(0);
@@ -62,7 +61,7 @@ fprintf('  iteration number: %d\n', info_last_hmorth.iter);
 fprintf('  relative error: %.1e\n', err_last_hmorth);
 fprintf('  matrix-vector products: %d\n', sum(info_last_hmorth.num_oracle));
 fprintf('  Arnoldi time: %.1e\n', info_last_hmorth.t_arnoldi);
-fprintf('  quadrature time: %.1e\n', info_last_hmorth.t_quadrature);
+fprintf('  quadrature time: %.1e\n', info_last_hmorth.t_funm_quad);
 
 % Sketched last-vector correction.
 rng(0);
@@ -76,7 +75,7 @@ fprintf('  iteration number: %d\n', info_last_sorth.iter);
 fprintf('  relative error: %.1e\n', err_last_sorth);
 fprintf('  matrix-vector products: %d\n', sum(info_last_sorth.num_oracle));
 fprintf('  Arnoldi time: %.1e\n', info_last_sorth.t_arnoldi);
-fprintf('  quadrature time: %.1e\n', info_last_sorth.t_quadrature);
+fprintf('  quadrature time: %.1e\n', info_last_sorth.t_funm_quad);
 
 % Sketched harmonic last-vector correction.
 rng(0);
@@ -90,7 +89,7 @@ fprintf('  iteration number: %d\n', info_last_shmorth.iter);
 fprintf('  relative error: %.1e\n', err_last_shmorth);
 fprintf('  matrix-vector products: %d\n', sum(info_last_shmorth.num_oracle));
 fprintf('  Arnoldi time: %.1e\n', info_last_shmorth.t_arnoldi);
-fprintf('  quadrature time: %.1e\n', info_last_shmorth.t_quadrature);
+fprintf('  quadrature time: %.1e\n', info_last_shmorth.t_funm_quad);
 
 % Error histories.
 figure('Color', 'w');

@@ -88,23 +88,23 @@ if ~succ_flag
     return
 end
 
+update_flag = false;
 switch param.update
-    case ""
     case "last_orth"
+        update_flag = true;
         arnoldi_data = arnoldi_last_orth_update(arnoldi_data);
-        arnoldi_data.sv = S_op(arnoldi_data.v);
     case "last_sorth"
+        update_flag = true;
         arnoldi_data = arnoldi_last_sorth_update(arnoldi_data);
     case "last_hmorth"
+        update_flag = true;
         arnoldi_data = arnoldi_last_hmorth_update(arnoldi_data);
-        arnoldi_data.sv = S_op(arnoldi_data.v);
     case "last_shmorth"
+        update_flag = true;
         arnoldi_data = arnoldi_last_shmorth_update(arnoldi_data);
-    otherwise
-        error('FUNM_QUAD:arnoldi_adaptive', 'Unknown adaptive Arnoldi update.');
 end
 
-if param.update ~= ""
+if update_flag
     if abs(arnoldi_data.h) <= m_now * eps * norm([arnoldi_data.H(:, m_now); arnoldi_data.h])
         succ_flag = false;
     end
