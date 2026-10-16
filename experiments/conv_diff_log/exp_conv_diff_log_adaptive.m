@@ -4,7 +4,6 @@ load(data_path + "convdiff_matrix.mat", "A", "b");
 load(data_path + "convdiff_sol.mat", "f_ex");
 param.exact = f_ex;
 N = size(A, 1);
-norm_f_ex = norm(f_ex);
 
 for sfactor = sfactor_list
     for truncation_length = truncation_length_list
@@ -33,7 +32,7 @@ for sfactor = sfactor_list
                     rng(seed_list(it_repeat), 'twister');
                     [f, info] = funm_quad_log(A, b, myparam);
                     result.t_list(it_repeat) = info.t_total;
-                    result.err_list(it_repeat) = norm(f - f_ex) / norm_f_ex;
+                    result.err_list(it_repeat) = info.final_err;
                     result.f(:, it_repeat) = f;
                     result.info(it_repeat) = info;
 

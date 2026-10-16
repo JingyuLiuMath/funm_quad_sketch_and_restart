@@ -29,6 +29,7 @@ info.t_update = 0;
 info.t_other = 0;
 info.t_total = 0;
 info.err_history = [];
+info.final_err = NaN;
 info.stop_condition = "maximal number of restarts exceeded";
 
 t_total_start = tic;
@@ -172,6 +173,10 @@ for k = 1 : param.max_restarts
         subdiag = [subdiag; ...
             H_new(2 : (num_new + 1) : end).'; arnoldi_data.h];
     end
+end
+
+if has_exact
+    info.final_err = norm(f - param.exact) / norm_exact;
 end
 
 info.t_total = toc(t_total_start);
