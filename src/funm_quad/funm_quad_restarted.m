@@ -22,6 +22,13 @@ info.num_quadpoints = [];
 info.quad_converged = [];
 
 info.t_arnoldi = 0;
+info.arnoldi_info.t_total = 0;
+info.arnoldi_info.t_apply_op = 0;
+info.arnoldi_info.t_apply_sketch = 0;
+info.arnoldi_info.t_coeff = 0;
+info.arnoldi_info.t_substract = 0;
+info.arnoldi_info.t_update = 0;
+info.arnoldi_info.t_other = 0;
 info.t_funm_init = 0;
 info.t_funm_quad = 0;
 info.t_thick = 0;
@@ -74,7 +81,6 @@ for k = 1 : param.max_restarts
         info.t_thick = info.t_thick + toc(t_thick_start);
     end
 
-    t_arnoldi_start = tic;
     m_total = m + num_thick;
     start_ind = num_thick + 1;
     if num_thick == 0
@@ -94,7 +100,7 @@ for k = 1 : param.max_restarts
 
     num_resketch = 0;
     if is_adaptive
-        [S_op, m_now, arnoldi_data, succ_flag, num_oracle, num_resketch] = ...
+        [S_op, m_now, arnoldi_data, succ_flag, num_oracle, num_resketch, arnoldi_info] = ...
             arnoldi_adaptive(S_op, A, arnoldi_data, m_total, start_ind, param);
         if k == 1
             m = m_now;
@@ -102,21 +108,28 @@ for k = 1 : param.max_restarts
     else
         switch param.arnoldi
             case "arnoldi"
-                [arnoldi_data, succ_flag, num_oracle] = ...
+                [arnoldi_data, succ_flag, num_oracle, arnoldi_info] = ...
                     arnoldi_fix(A, arnoldi_data, m_total, start_ind, param);
             case "hmarnoldi"
-                [arnoldi_data, succ_flag, num_oracle] = ...
+                [arnoldi_data, succ_flag, num_oracle, arnoldi_info] = ...
                     hmarnoldi_fix(A, arnoldi_data, m_total, start_ind, param);
             case "sarnoldi"
-                [arnoldi_data, succ_flag, num_oracle] = ...
+                [arnoldi_data, succ_flag, num_oracle, arnoldi_info] = ...
                     sarnoldi_fix(S_op, A, arnoldi_data, m_total, start_ind, param);
             case "shmarnoldi"
-                [arnoldi_data, succ_flag, num_oracle] = ...
+                [arnoldi_data, succ_flag, num_oracle, arnoldi_info] = ...
                     shmarnoldi_fix(S_op, A, arnoldi_data, m_total, start_ind, param);
         end
         m_now = size(arnoldi_data.H, 1);
     end
-    info.t_arnoldi = info.t_arnoldi + toc(t_arnoldi_start);
+    info.arnoldi_info.t_total = info.arnoldi_info.t_total + arnoldi_info.t_total;
+    info.t_arnoldi = info.arnoldi_info.t_total;
+    info.arnoldi_info.t_apply_op = info.arnoldi_info.t_apply_op + arnoldi_info.t_apply_op;
+    info.arnoldi_info.t_apply_sketch = info.arnoldi_info.t_apply_sketch + arnoldi_info.t_apply_sketch;
+    info.arnoldi_info.t_coeff = info.arnoldi_info.t_coeff + arnoldi_info.t_coeff;
+    info.arnoldi_info.t_substract = info.arnoldi_info.t_substract + arnoldi_info.t_substract;
+    info.arnoldi_info.t_update = info.arnoldi_info.t_update + arnoldi_info.t_update;
+    info.arnoldi_info.t_other = info.arnoldi_info.t_other + arnoldi_info.t_other;
     info.iter = k;
     info.dim(k) = m_now;
     info.num_thick(k) = num_thick;

@@ -3,6 +3,8 @@ exp_conv_diff_log_settings;
 load(data_path + "conv_diff_log_fixed_arnoldi_sfactor_0_thick_0.mat", "result");
 it_repeat = find(result.t_list == median(result.t_list), 1);
 baseline_time = result.info(it_repeat).t_total;
+baseline_arnoldi_time = result.info(it_repeat).arnoldi_info.t_total ...
+    / result.info(it_repeat).iter;
 
 mode_list = ["fixed", "adaptive"];
 for sfactor = sfactor_list
@@ -48,7 +50,11 @@ for sfactor = sfactor_list
             figure_prefix = figure_path + file_name;
             figure_title = "Convection-diffusion log, " + mode + ", sfactor=" + string(sfactor) ...
                 + ", thick=" + string(double(thick));
-            plot_ratios(result_list, figure_prefix, figure_title, baseline_time);
+            plot_ratios_total(result_list, figure_prefix, figure_title, baseline_time);
+            if mode == "fixed"
+                plot_ratios_arnoldi(result_list, figure_prefix + "_arnoldi", ...
+                    figure_title + ", average Arnoldi call", baseline_arnoldi_time);
+            end
         end
     end
 end

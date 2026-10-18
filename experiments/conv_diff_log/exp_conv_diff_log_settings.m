@@ -39,7 +39,7 @@ else
 end
 param.max_restarts = 30;
 param.quad_tol = 1e-11;
-param.max_num_quad_points = 512;
+param.max_num_quad_points = 1024;
 param.stopping_accuracy = 1e-10;
 param.number_thick = 5;
 param.cond_tol = 1e6;
