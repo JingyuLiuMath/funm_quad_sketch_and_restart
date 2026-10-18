@@ -19,7 +19,7 @@ for sfactor = sfactor_list
                 myparam.thick = thick;
 
                 result = struct();
-                result.n = N;
+                result.N = N;
                 result.method = method;
                 result.sfactor = sfactor;
                 result.param = myparam;

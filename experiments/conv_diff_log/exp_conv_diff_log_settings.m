@@ -19,7 +19,7 @@ figure_prefix = "./figure/conv_diff_log";
 if ispc
     n = 50;
 else
-    n = 150;
+    n = 180;
 end
 N = n^2;
 nu = 1;
@@ -35,7 +35,7 @@ param = struct();
 if ispc
     param.krylov_dim = 30;
 else
-    param.krylov_dim = 120;
+    param.krylov_dim = 150;
 end
 param.max_restarts = 30;
 param.quad_tol = 1e-11;

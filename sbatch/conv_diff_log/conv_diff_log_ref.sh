@@ -8,7 +8,7 @@
 #SBATCH --time=18:00:00
 
 module unload MATLAB
-module load MATLAB/R2026a || exit $?
+module load MATLAB/R2023b || exit $?
 
 echo "=========================================="
 echo "        SLURM JOB INFORMATION"
