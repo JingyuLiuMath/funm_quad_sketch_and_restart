@@ -1,4 +1,4 @@
-exp_frac_laplacian_invsqrt_settings;
+exp_graph_laplacian_invsqrt_settings;
 
 for krylov_dim = krylov_dim_list
     mode_list = ["fixed", "adaptive"];

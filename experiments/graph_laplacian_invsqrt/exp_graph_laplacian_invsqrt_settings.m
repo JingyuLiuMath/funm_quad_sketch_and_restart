@@ -1,6 +1,8 @@
 clear;
 close all;
 
+matrix_data_path = "./data/"
+
 if ispc || ismac
     data_path = "./data/";
 elseif isunix

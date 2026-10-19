@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#SBATCH --job-name=frac_laplacian_invsqrt_ref
-#SBATCH --output=frac_laplacian_invsqrt_ref_%j.out
-#SBATCH --error=frac_laplacian_invsqrt_ref_%j.err
+#SBATCH --job-name=graph_laplacian_invsqrt_fix
+#SBATCH --output=graph_laplacian_invsqrt_fix_%j.out
+#SBATCH --error=graph_laplacian_invsqrt_fix_%j.err
 #SBATCH --nodelist=bigMem1
 #SBATCH --exclusive
 #SBATCH --time=18:00:00
@@ -49,7 +49,7 @@ echo "Job started at: $(date)"
 echo "=========================================="
 echo ""
 
-matlab -batch "cd('/home/jyliu/funm_quad_sketch_and_restart'); setuppath; cd('experiments/frac_laplacian_invsqrt'); exp_frac_laplacian_invsqrt_ref;"
+matlab -batch "cd('/home/jyliu/funm_quad_sketch_and_restart'); setuppath; cd('experiments/graph_laplacian_invsqrt'); exp_graph_laplacian_invsqrt_fix;"
 matlab_status=$?
 
 echo ""

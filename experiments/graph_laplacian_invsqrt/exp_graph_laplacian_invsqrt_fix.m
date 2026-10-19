@@ -1,7 +1,8 @@
-exp_frac_laplacian_invsqrt_settings;
+exp_graph_laplacian_invsqrt_settings;
 
-matrix_file = data_path + "frac_laplacian_matrix_" + graph_name + ".mat";
-reference_file = data_path + "frac_laplacian_sol_" + graph_name + ".mat";
+matrix_file = matrix_data_path + "frac_laplacian_matrix_" + graph_name + ".mat";
+reference_file = matrix_data_path + "frac_laplacian_sol_" + graph_name + ".mat";
+
 load(matrix_file, "A", "b");
 load(reference_file, "f_ex");
 N = size(A, 1);

@@ -1,4 +1,4 @@
-exp_frac_laplacian_invsqrt_settings;
+exp_graph_laplacian_invsqrt_settings;
 
 for krylov_dim = krylov_dim_list
     load(data_path + "frac_laplacian_invsqrt_fixed_arnoldi_sfactor_0_thick_0_krylov_dim_" ...
