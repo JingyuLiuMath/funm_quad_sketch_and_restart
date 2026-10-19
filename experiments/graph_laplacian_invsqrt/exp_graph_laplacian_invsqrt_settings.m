@@ -20,7 +20,7 @@ end
 if ispc || ismac
     graph_name = "p2p-Gnutella08";
 else
-    graph_name = "p2p-Gnutella31";
+    graph_name = "p2p-Gnutella25";
 end
 
 krylov_dim_list = [100, 150];

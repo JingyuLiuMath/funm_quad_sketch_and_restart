@@ -1,5 +1,7 @@
 exp_graph_laplacian_invsqrt_settings;
 
+fprintf("Graph: %s\n", graph_name);
+
 matrix_file = matrix_data_path + "frac_laplacian_matrix_" + graph_name + ".mat";
 reference_file = matrix_data_path + "frac_laplacian_sol_" + graph_name + ".mat";
 
