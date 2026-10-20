@@ -11,13 +11,11 @@ b = A * b0;
 
 fprintf('n: %d, N: %d, nu: %.1e\n', n, N, nu);
 t_ref_start = tic;
-[F, exitflag] = logm(full(speye(N) + A));
-f_ex = F * b0;
+f_ex = two_dimensional_conv_diff_log(n, nu, b0);
 t_ref = toc(t_ref_start);
-assert(exitflag == 0, 'logm did not complete successfully.');
 fprintf('Reference computation time: %.1e seconds\n', t_ref);
 
 save(matrix_file, ...
     "A", "b", "n", "N", "nu");
 save(reference_file, ...
-    "f_ex", "t_ref", "exitflag");
+    "f_ex", "t_ref");

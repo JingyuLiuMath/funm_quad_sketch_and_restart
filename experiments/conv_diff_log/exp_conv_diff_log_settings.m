@@ -21,9 +21,9 @@ if ~isfolder(figure_path)
 end
 
 if ispc || ismac
-    n = 50;
-else
     n = 256;
+else
+    n = 1024;
 end
 N = n^2;
 nu = 1;
