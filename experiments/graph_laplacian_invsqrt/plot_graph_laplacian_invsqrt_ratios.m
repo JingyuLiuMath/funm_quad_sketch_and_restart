@@ -11,6 +11,9 @@ for krylov_dim = krylov_dim_list
     mode_list = ["fixed", "adaptive"];
     for sfactor = sfactor_list
         for mode = mode_list
+            if mode == "adaptive" && krylov_dim ~= adaptive_krylov_dim
+                continue
+            end
             if mode == "fixed"
                 method_list = fixed_method_list;
                 trunc_list = inf;

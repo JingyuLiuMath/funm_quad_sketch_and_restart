@@ -4,6 +4,9 @@ for krylov_dim = krylov_dim_list
     mode_list = ["fixed", "adaptive"];
     for sfactor = sfactor_list
         for mode = mode_list
+            if mode == "adaptive" && krylov_dim ~= adaptive_krylov_dim
+                continue
+            end
             for thick = thick_list
                 result_list = struct([]);
                 it_result = 0;

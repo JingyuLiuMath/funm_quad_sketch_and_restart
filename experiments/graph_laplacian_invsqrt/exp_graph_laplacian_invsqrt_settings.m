@@ -27,6 +27,7 @@ else
 end
 
 krylov_dim_list = [100, 150];
+adaptive_krylov_dim = max(krylov_dim_list);
 
 sfactor_list = 4;
 fixed_method_list = ["arnoldi", "hmarnoldi", "sarnoldi", "shmarnoldi"];

@@ -10,6 +10,9 @@ for krylov_dim = krylov_dim_list
                 'mode', 'method', 'sfactor', 'trunc', 'thick', 'time', 'reason', ...
                 'iteration number', 'relative error', 'matrix-vector products');
             for mode = mode_list
+                if mode == "adaptive" && krylov_dim ~= adaptive_krylov_dim
+                    continue
+                end
                 if mode == "fixed"
                     method_list = fixed_method_list;
                 else
