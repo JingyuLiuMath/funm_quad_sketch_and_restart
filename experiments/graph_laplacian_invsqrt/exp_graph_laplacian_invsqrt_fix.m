@@ -52,17 +52,17 @@ for krylov_dim = krylov_dim_list
 
                     fprintf("%s, krylov_dim=%d, sfactor=%d, thick=%d, run %d/%d\n", ...
                         method, krylov_dim, sfactor, thick, it_repeat, num_repeat);
-                    fprintf("  time: %.1e\n", info.t_total);
-                    fprintf("  reason: %s\n", info.stop_condition);
-                    fprintf("  iteration number: %d\n", info.iter);
-                    fprintf("  true relative error: %.1e\n", result.err_list(it_repeat));
-                    fprintf("  matrix-vector products: %d\n", sum(info.num_oracle));
+                    fprintf('  time: %.1e\n', info.t_total);
+                    fprintf('  reason: %s\n', info.stop_condition);
+                    fprintf('  iteration number: %d\n', info.iter);
+                    fprintf('  relative error: %.1e\n', info.final_err);
+                    fprintf('  matrix-vector products: %d\n', sum(info.num_oracle));
                 end
 
                 save(data_path + "frac_laplacian_invsqrt_fixed_" + method ...
+                    + "_krylov_dim_" + string(krylov_dim) ...
                     + "_sfactor_" + string(sfactor) ...
-                    + "_thick_" + string(double(thick)) ...
-                    + "_krylov_dim_" + string(krylov_dim) + ".mat", ...
+                    + "_thick_" + string(double(thick)) + ".mat", ...
                     "result", '-v7.3');
             end
         end

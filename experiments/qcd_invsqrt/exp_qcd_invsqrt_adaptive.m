@@ -1,7 +1,10 @@
 exp_qcd_invsqrt_settings;
 
-load(data_path + "qcd_matrix.mat", "Q", "b");
-load(data_path + "qcd_sol.mat", "f_ex");
+matrix_file = matrix_data_path + "qcd_matrix.mat";
+reference_file = matrix_data_path + "qcd_sol.mat";
+
+load(matrix_file, "Q", "b");
+load(reference_file, "f_ex");
 param.exact = f_ex;
 N = size(Q, 1);
 A = @(v) Q * (Q * v);
@@ -42,18 +45,18 @@ for krylov_dim = krylov_dim_list
 
                         fprintf("adaptive %s, sfactor=%d, trunc=%d, thick=%d, krylov_dim=%d, run %d/%d\n", ...
                             method, sfactor, truncation_length, thick, krylov_dim, it_repeat, num_repeat);
-                        fprintf("  time: %.1e\n", result.t_list(it_repeat));
-                        fprintf("  reason: %s\n", info.stop_condition);
-                        fprintf("  iteration number: %d\n", info.iter);
-                        fprintf("  true relative error: %.1e\n", result.err_list(it_repeat));
-                        fprintf("  matrix-vector products: %d\n", sum(info.num_oracle));
+                        fprintf('  time: %.1e\n', info.t_total);
+                        fprintf('  reason: %s\n', info.stop_condition);
+                        fprintf('  iteration number: %d\n', info.iter);
+                        fprintf('  relative error: %.1e\n', info.final_err);
+                        fprintf('  matrix-vector products: %d\n', sum(info.num_oracle));
                     end
 
                     save(data_path + "qcd_invsqrt_adaptive_" + method ...
+                        + "_krylov_dim_" + string(krylov_dim) ...
                         + "_sfactor_" + string(sfactor) ...
-                        + "_trunc_" + string(truncation_length) ...
                         + "_thick_" + string(double(thick)) ...
-                        + "_krylov_dim_" + string(krylov_dim) + ".mat", ...
+                        + "_trunc_" + string(truncation_length) + ".mat", ...
                         "result", '-v7.3');
                 end
             end
