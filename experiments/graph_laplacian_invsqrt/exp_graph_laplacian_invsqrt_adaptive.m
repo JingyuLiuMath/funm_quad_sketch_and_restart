@@ -7,7 +7,7 @@ reference_file = matrix_data_path + "frac_laplacian_sol_" + graph_name + ".mat";
 
 load(matrix_file, "A", "b");
 load(reference_file, "f_ex");
-param.exact = real(f_ex);
+param.exact = f_ex;
 N = size(A, 1);
 norm_exact = norm(f_ex);
 

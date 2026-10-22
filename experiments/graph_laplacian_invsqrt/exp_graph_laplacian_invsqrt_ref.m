@@ -10,7 +10,12 @@ if isfile(reference_file)
     return
 end
 
-load(matrix_file, 'A', 'b0');
+load(matrix_file, 'A', 'matrix_name');
+N = size(A, 1);
+rng(0, 'twister');
+b0 = complex(rand(N, 1), rand(N, 1));
+b = A * b0;
+save(matrix_file, 'A', 'b', 'b0', 'matrix_name', '-v7.3');
 t_ref_start = tic;
 [F, sqrtm_residual] = sqrtm(full(A));
 f_ex = F * b0;

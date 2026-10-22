@@ -8,7 +8,7 @@ reference_file = matrix_data_path + "frac_laplacian_sol_" + graph_name + ".mat";
 load(matrix_file, "A", "b");
 load(reference_file, "f_ex");
 N = size(A, 1);
-param.exact = real(f_ex);
+param.exact = f_ex;
 norm_exact = norm(f_ex);
 
 for krylov_dim = krylov_dim_list
