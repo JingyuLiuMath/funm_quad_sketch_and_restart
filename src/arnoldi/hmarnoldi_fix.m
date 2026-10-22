@@ -1,6 +1,9 @@
 function [arnoldi_data, succ_flag, num_oracle, arnoldi_info] = ...
     hmarnoldi_fix(A, arnoldi_data, m, start_ind, param)
 
+assert(start_ind == 1, "Thick restarting is not supported " + ...
+    "for harmonic Arnoldi process!");
+
 if ~isa(A, 'function_handle')
     op_A = @(x) A * x;
 else
@@ -20,9 +23,7 @@ arnoldi_data.H(m + 1, m) = 0;
 if size(arnoldi_data.V, 2) < m
     arnoldi_data.V(:, m) = 0;
 end
-if size(arnoldi_data.Z, 2) < m
-    arnoldi_data.Z(:, m) = 0;
-end
+Z = zeros(size(arnoldi_data.v, 1), m);
 trunc = param.truncation_length;
 succ_flag = true;
 num_oracle = 0;
@@ -34,7 +35,6 @@ if arnoldi_data.beta == 0
     arnoldi_data.h = 0;
     arnoldi_data.H = arnoldi_data.H(1 : m_init, 1 : m_init);
     arnoldi_data.V = arnoldi_data.V(:, 1 : m_init);
-    arnoldi_data.Z = arnoldi_data.Z(:, 1 : m_init);
     arnoldi_info.t_total = toc(t_total_start);
     arnoldi_info.t_other = arnoldi_info.t_total - ...
         (arnoldi_info.t_apply_op + arnoldi_info.t_apply_sketch + ...
@@ -58,11 +58,11 @@ for j = start_ind : m
         arnoldi_data.H(j + 1, j) = 0;
         break
     end
-    arnoldi_data.Z(:, j) = arnoldi_data.v / conj(rho);
+    Z(:, j) = arnoldi_data.v / conj(rho);
     
     for i = max(1, j - trunc + 1) : j
         t_coeff_start = tic;
-        h_i_j = arnoldi_data.Z(:, i)' * arnoldi_data.v;
+        h_i_j = Z(:, i)' * arnoldi_data.v;
         arnoldi_data.H(i, j) = arnoldi_data.H(i, j) + h_i_j;
         arnoldi_info.t_coeff = arnoldi_info.t_coeff + toc(t_coeff_start);
         t_substract_start = tic;
@@ -86,7 +86,6 @@ end
 arnoldi_data.h = arnoldi_data.H(m + 1, m);
 arnoldi_data.H = arnoldi_data.H(1 : m, 1 : m);
 arnoldi_data.V = arnoldi_data.V(:, 1 : m);
-arnoldi_data.Z = arnoldi_data.Z(:, 1 : m);
 
 arnoldi_info.t_total = toc(t_total_start);
 arnoldi_info.t_other = arnoldi_info.t_total - ...

@@ -1,6 +1,9 @@
 function [arnoldi_data, succ_flag, num_oracle, arnoldi_info] = ...
     shmarnoldi_fix(op_S, A, arnoldi_data, m, start_ind, param)
 
+assert(start_ind == 1, "Thick restarting is not supported " + ...
+    "for sketched harmonic Arnoldi process!");
+
 if ~isa(A, 'function_handle')
     op_A = @(x) A * x;
 else
@@ -23,12 +26,8 @@ end
 if size(arnoldi_data.SV, 2) < m
     arnoldi_data.SV(:, m) = 0;
 end
-if size(arnoldi_data.Z, 2) < m
-    arnoldi_data.Z(:, m) = 0;
-end
-if size(arnoldi_data.SZ, 2) < m
-    arnoldi_data.SZ(:, m) = 0;
-end
+% Z = zeros(size(arnoldi_data.V, 1), m);
+SZ = zeros(size(arnoldi_data.SV, 1), m);
 trunc = param.truncation_length;
 succ_flag = true;
 num_oracle = 0;
@@ -41,8 +40,8 @@ if arnoldi_data.beta == 0
     arnoldi_data.H = arnoldi_data.H(1 : m_init, 1 : m_init);
     arnoldi_data.V = arnoldi_data.V(:, 1 : m_init);
     arnoldi_data.SV = arnoldi_data.SV(:, 1 : m_init);
-    arnoldi_data.Z = arnoldi_data.Z(:, 1 : m_init);
-    arnoldi_data.SZ = arnoldi_data.SZ(:, 1 : m_init);
+    % Z = Z(:, 1 : m_init);
+    % SZ = SZ(:, 1 : m_init);
     arnoldi_info.t_total = toc(t_total_start);
     arnoldi_info.t_other = arnoldi_info.t_total - ...
         (arnoldi_info.t_apply_op + arnoldi_info.t_apply_sketch + ...
@@ -71,13 +70,13 @@ for j = start_ind : m
         arnoldi_data.H(j + 1, j) = 0;
         break
     end
-    arnoldi_data.Z(:, j) = arnoldi_data.v / conj(rho);
-    arnoldi_data.SZ(:, j) = arnoldi_data.sv / conj(rho);
+    % Z(:, j) = arnoldi_data.v / conj(rho);
+    SZ(:, j) = arnoldi_data.sv / conj(rho);
 
     j_trunc_start = max(1, j - trunc + 1);
     for i = j_trunc_start : j
         t_coeff_start = tic;
-        h_i_j = arnoldi_data.SZ(:, i)' * arnoldi_data.sv;
+        h_i_j = SZ(:, i)' * arnoldi_data.sv;
         arnoldi_data.H(i, j) = arnoldi_data.H(i, j) + h_i_j;
         arnoldi_info.t_coeff = arnoldi_info.t_coeff + toc(t_coeff_start);
         t_substract_start = tic;
@@ -104,8 +103,6 @@ arnoldi_data.h = arnoldi_data.H(m + 1, m);
 arnoldi_data.H = arnoldi_data.H(1 : m, 1 : m);
 arnoldi_data.V = arnoldi_data.V(:, 1 : m);
 arnoldi_data.SV = arnoldi_data.SV(:, 1 : m);
-arnoldi_data.Z = arnoldi_data.Z(:, 1 : m);
-arnoldi_data.SZ = arnoldi_data.SZ(:, 1 : m);
 
 arnoldi_info.t_total = toc(t_total_start);
 arnoldi_info.t_other = arnoldi_info.t_total - ...

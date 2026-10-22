@@ -50,8 +50,6 @@ end
 is_adaptive = param.mode == "adaptive";
 use_sketch = is_adaptive || param.arnoldi == "sarnoldi" ...
     || param.arnoldi == "shmarnoldi";
-use_harmonic = ~is_adaptive && ...
-    (param.arnoldi == "hmarnoldi" || param.arnoldi == "shmarnoldi");
 
 S_op = [];
 if is_adaptive
@@ -86,15 +84,9 @@ for k = 1 : param.max_restarts
     if num_thick == 0
         arnoldi_data.V = zeros(N, 0);
         arnoldi_data.H = [];
-        if use_harmonic
-            arnoldi_data.Z = zeros(N, 0);
-        end
         if use_sketch
             s = size(arnoldi_data.sv, 1);
             arnoldi_data.SV = zeros(s, 0);
-            if use_harmonic
-                arnoldi_data.SZ = zeros(s, 0);
-            end
         end
     end
 
