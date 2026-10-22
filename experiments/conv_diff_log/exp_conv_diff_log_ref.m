@@ -6,7 +6,7 @@ reference_file = matrix_data_path + file_prefix + "_sol.mat";
 
 A = two_dimensional_conv_diff(n, nu);
 
-b0 = ones(N, 1) / sqrt(N);
+b0 = complex(rand(N, 1), rand(N, 1));
 b = A * b0;
 
 fprintf('n: %d, N: %d, nu: %.1e\n', n, N, nu);

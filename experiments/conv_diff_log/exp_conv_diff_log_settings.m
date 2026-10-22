@@ -23,7 +23,7 @@ end
 if ispc || ismac
     n = 256;
 else
-    n = 1024;
+    n = 512;
 end
 N = n^2;
 nu = 1;
