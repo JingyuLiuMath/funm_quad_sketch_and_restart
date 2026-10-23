@@ -5,11 +5,6 @@ fprintf("Graph: %s\n", graph_name);
 matrix_file = matrix_data_path + "frac_laplacian_matrix_" + graph_name + ".mat";
 reference_file = matrix_data_path + "frac_laplacian_sol_" + graph_name + ".mat";
 
-if isfile(reference_file)
-    fprintf('Using existing reference: %s\n', reference_file);
-    return
-end
-
 load(matrix_file, 'A', 'matrix_name');
 N = size(A, 1);
 rng(0, 'twister');
