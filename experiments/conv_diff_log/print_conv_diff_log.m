@@ -1,51 +1,95 @@
 exp_conv_diff_log_settings;
 
-for krylov_dim = krylov_dim_list
-    mode_list = ["fixed", "adaptive"];
-    for sfactor = sfactor_list
-        for truncation_length = truncation_length_list
-            fprintf('\nkrylov_dim = %d, sfactor = %d, trunc = %d (fixed results reused; unsketched sfactor=0)\n', ...
-                krylov_dim, sfactor, truncation_length);
-            fprintf('%-9s %-14s %7s %7s %5s %12s %-36s %16s %14s %22s\n', ...
-                'mode', 'method', 'sfactor', 'trunc', 'thick', 'time', 'reason', ...
-                'iteration number', 'relative error', 'matrix-vector products');
-            for mode = mode_list
-                if mode == "adaptive" && krylov_dim ~= adaptive_krylov_dim
+% Select the convection-diffusion results to display.
+selection.data_path = data_path;
+selection.file_prefix = "conv_diff_log";
+selection.thick = false;
+
+% Columns pair the two method families; fixed and adaptive results use separate sections.
+method_groups = ["arnoldi", "sarnoldi", "last_orth"; ...
+                 "hmarnoldi", "shmarnoldi", "last_hmorth"];
+method_labels = ["Arn", "sArn", "adaArn"; ...
+                 "HmArn", "sHmArn", "adaHmArn"];
+empty_row = struct('method_name', "", 'error', NaN, 'time', NaN, ...
+    'n_iter', NaN, 'n_matvec', NaN, 'm_act', NaN);
+
+for sfactor = sfactor_list
+    selection.sfactor = sfactor;
+    sections = cell(1, numel(krylov_dim_list) + 1);
+    section_labels = strings(1, numel(krylov_dim_list) + 1);
+    baseline_times = zeros(numel(krylov_dim_list) + 1, 2);
+
+    for dim_index = 1:numel(krylov_dim_list)
+        selection.krylov_dim = krylov_dim_list(dim_index);
+        rows = repmat(empty_row, 2 + numel(truncation_length_list), 2);
+
+        for group_index = 1:2
+            methods = method_groups(group_index, :);
+            labels = method_labels(group_index, :);
+            baseline = read_median_run(selection, "fixed", methods(1), inf);
+            baseline_times(dim_index, group_index) = baseline.t_total;
+
+            % Fixed-dimension methods: Arn/sArn or HmArn/sHmArn.
+            for method_index = 1:2
+                if ~ismember(methods(method_index), fixed_method_list)
                     continue
                 end
-                if mode == "fixed"
-                    method_list = fixed_method_list;
+                if method_index == 1
+                    info = baseline;
                 else
-                    method_list = adaptive_update_list;
+                    info = read_median_run(selection, "fixed", methods(method_index), inf);
                 end
-                for thick = thick_list
-                    for method = method_list
-                        if mode == "fixed" && thick ...
-                                && (method == "hmarnoldi" || method == "shmarnoldi")
-                            continue
-                        end
-                        factor = sfactor;
-                        if mode == "fixed" && (method == "arnoldi" || method == "hmarnoldi")
-                            factor = 0;
-                        end
-                        file_name = "conv_diff_log_" + mode + "_" + method ...
-                            + "_krylov_dim_" + string(krylov_dim) ...
-                            + "_sfactor_" + string(factor) ...
-                            + "_thick_" + string(double(thick));
-                        if mode == "adaptive"
-                            file_name = file_name + "_trunc_" + string(truncation_length);
-                        end
-                        file_name = file_name + ".mat";
-                        load(data_path + file_name, "result");
-                        it_repeat = find(result.t_list == median(result.t_list), 1);
-                        info = result.info(it_repeat);
-                        fprintf('%-9s %-14s %7d %7g %5d %12.5e %-36s %16d %14.5e %22d\n', ...
-                            mode, method, result.sfactor, result.param.truncation_length, thick, ...
-                            info.t_total, info.stop_condition, info.iter, ...
-                            info.final_err, sum(info.num_oracle));
-                    end
-                end
+                rows(method_index, group_index) = ...
+                    summarize_run(labels(method_index), info);
+            end
+
+            % Adaptive results exist only for the configured maximum dimension.
+            if selection.krylov_dim ~= adaptive_krylov_dim ...
+                    || ~ismember(methods(3), adaptive_update_list)
+                continue
+            end
+            for trunc_index = 1:numel(truncation_length_list)
+                truncation_length = truncation_length_list(trunc_index);
+                info = read_median_run(selection, "adaptive", methods(3), truncation_length);
+                label = labels(3) + "-" + string(truncation_length);
+                rows(2 + trunc_index, group_index) = summarize_run(label, info);
             end
         end
+
+        sections{dim_index} = rows(1:2, :);
+        section_labels(dim_index) = "\(m = " + string(selection.krylov_dim) + "\), fixed";
+        if selection.krylov_dim == adaptive_krylov_dim
+            sections{end} = rows(3:end, :);
+            section_labels(end) = "\(m_{\max} = " + string(adaptive_krylov_dim) + "\), adaptive";
+            baseline_times(end, :) = baseline_times(dim_index, :);
+        end
     end
+
+    table_options.caption = conv_diff_log_caption(sfactor, adaptive_krylov_dim);
+    table_options.label = "tab:conv-diff-log-sfactor-" + string(sfactor);
+    table_options.output_file = fullfile(figure_path, ...
+        "conv_diff_log_table_sfactor_" + string(sfactor) + ".tex");
+    table_options.baseline_times = baseline_times;
+    table_options.section_labels = section_labels;
+    table_options.highlight_fastest = false;
+    print_result(sections, table_options);
+end
+
+function caption = conv_diff_log_caption(sfactor, adaptive_krylov_dim)
+% Keep each caption sentence separate so the wording is easy to edit.
+sentences = [ ...
+    "Relative error, runtime in seconds, number of restart cycles " + ...
+        "\(n_{\mathrm{iter}}\), number of matrix-vector products " + ...
+        "\(n_{\mathrm{matvec}}\), and maximum actual Krylov subspace dimension " + ...
+        "\(m_{\mathrm{act}}\) attained during each run for the convection-diffusion logarithm example."; ...
+    "The column ``speedup'' is the ratio of the runtime of " + ...
+        "Arn (left group) or HmArn (right group) to that of the corresponding method, " + ...
+        "using the fixed-dimension baseline at \(m=m_{\max}\) for the adaptive section."; ...
+    "For fixed-dimension methods, \(m\) is given in the section heading " + ...
+        "and \(s=" + string(sfactor) + "m\)."; ...
+    "Adaptive methods use \(m_{\max}=" + string(adaptive_krylov_dim) ...
+        + "\) and \(\eta=" + string(sfactor) ...
+        + "\), and appear in a separate section." ...
+];
+caption = strjoin(sentences, " ");
 end

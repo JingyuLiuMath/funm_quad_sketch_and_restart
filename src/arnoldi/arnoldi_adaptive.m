@@ -49,7 +49,7 @@ arnoldi_data.sv = arnoldi_data.sv / arnoldi_data.beta;
 arnoldi_data.V(:, start_ind) = arnoldi_data.v;
 arnoldi_data.SV(:, start_ind) = arnoldi_data.sv;
 arnoldi_data.H(start_ind, 1 : m_init) = arnoldi_data.beta * arnoldi_data.H(start_ind, 1 : m_init);
-examine_period = 5;
+examine_period = 1;
 
 for j = start_ind : m
     t_apply_op_start = tic;

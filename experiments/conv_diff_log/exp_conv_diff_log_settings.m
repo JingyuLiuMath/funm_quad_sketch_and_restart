@@ -26,7 +26,7 @@ else
     n = 512;
 end
 N = n^2;
-nu = 1;
+nu = 0.1;
 
 krylov_dim_list = [150, 200];
 adaptive_krylov_dim = max(krylov_dim_list);
@@ -38,7 +38,7 @@ thick_list = [false, true];
 truncation_length_list = [2, 1, 0];
 
 param = struct();
-param.max_restarts = 500;
+param.max_restarts = 5000;
 param.quad_tol = 1e-9;
 param.max_num_quad_points = 1024;
 param.stopping_accuracy = 1e-8;
