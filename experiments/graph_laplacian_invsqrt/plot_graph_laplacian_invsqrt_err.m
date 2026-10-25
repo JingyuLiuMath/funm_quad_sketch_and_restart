@@ -1,0 +1,244 @@
+exp_graph_laplacian_invsqrt_settings;
+
+% Use the same selected runs and method names as the graph Laplacian table.
+selection.data_path = data_path;
+selection.file_prefix = "frac_laplacian_invsqrt";
+selection.krylov_dim = 150;
+selection.thick = false;
+group_names = ["arnoldi", "hmarnoldi"];
+method_groups = ["arnoldi", "sarnoldi", "last_orth"; ...
+                 "hmarnoldi", "shmarnoldi", "last_hmorth"];
+method_labels = ["Arn", "sArn", "adaArn"; ...
+                 "HmArn", "sHmArn", "adaHmArn"];
+
+% Enlarge the plotting area for two figures placed side by side in LaTeX.
+plot_options.figure_size = [2300, 1650];
+plot_options.axes_position = [480, 400, 1100, 900];
+plot_options.font_size = 128;
+plot_options.legend_font_size = 104;
+plot_options.line_width = 12;
+plot_options.marker_size = 40;
+plot_options.legend_location = "eastoutside";
+plot_options.legend_gap = 25;
+plot_options.legend_token_size = [80, 60];
+plot_options.x_label = "number of matrix-vector products";
+plot_options.y_label = "relative error";
+
+for sfactor = sfactor_list
+    selection.sfactor = sfactor;
+    for group_index = 1:numel(group_names)
+        result_list = struct('method_name', {}, 'res_hist', {}, 'matvec_hist', {});
+        for method_index = 1:3
+            method = method_groups(group_index, method_index);
+            label = method_labels(group_index, method_index);
+            if method_index <= 2
+                if ~ismember(method, fixed_method_list)
+                    continue
+                end
+                mode = "fixed";
+                truncations = inf;
+            else
+                if selection.krylov_dim ~= adaptive_krylov_dim ...
+                        || ~ismember(method, adaptive_update_list)
+                    continue
+                end
+                mode = "adaptive";
+                truncations = truncation_length_list;
+            end
+            for truncation_length = truncations
+                info = graph_read_median_run(selection, mode, method, truncation_length);
+                result.method_name = label;
+                if mode == "adaptive"
+                    result.method_name = label + "-" + string(truncation_length);
+                end
+                result.res_hist = info.err_history(:).';
+                result.matvec_hist = cumsum(info.num_oracle(:)).';
+                result_list(end + 1) = result;
+            end
+        end
+        if isempty(result_list)
+            continue
+        end
+        % Four readable ticks, with room beyond the last matvec count.
+        max_matvec = max([result_list.matvec_hist]);
+        target_step = max(1, 1.03 * max_matvec / 3);
+        step_scale = 10 ^ floor(log10(target_step));
+        tick_step = ceil(target_step / step_scale) * step_scale;
+        plot_options.x_limits = [0, 3 * tick_step];
+        plot_options.x_ticks = 0:tick_step:3 * tick_step;
+        % Include the 10^-12 tick and leave room below every positive error.
+        errors = [result_list.res_hist];
+        errors = errors(isfinite(errors) & errors > 0);
+        if ~isempty(errors)
+            plot_options.y_limits = [min(1e-12, min(errors) / 3), ...
+                max(1, 1.1 * max(errors))];
+        end
+        figure_prefix = fullfile(figure_path, "graph_laplacian_invsqrt_err_" ...
+            + group_names(group_index) + "_sfactor_" + string(sfactor));
+        graph_plot_res(result_list, figure_prefix, "Graph Laplacian", plot_options);
+    end
+end
+
+% Local helpers keep this Graph Laplacian plot independent of other examples.
+function info = graph_read_median_run(selection, mode, method, truncation_length)
+%READ_MEDIAN_RUN Load the run with median total runtime for a configuration.
+% selection supplies data_path, file_prefix, krylov_dim, sfactor, and thick.
+% All reported values come from the same selected repeat.
+
+mode = string(mode);
+method = string(method);
+factor = selection.sfactor;
+if mode == "fixed" && ismember(method, ["arnoldi", "hmarnoldi"])
+    factor = 0;
+end
+file_name = string(selection.file_prefix) + "_" + mode + "_" + method ...
+    + "_krylov_dim_" + string(selection.krylov_dim) ...
+    + "_sfactor_" + string(factor) ...
+    + "_thick_" + string(double(selection.thick));
+if mode == "adaptive"
+    file_name = file_name + "_trunc_" + string(truncation_length);
+end
+data = load(fullfile(selection.data_path, file_name + ".mat"), "result");
+repeat_index = find(data.result.t_list == median(data.result.t_list), 1);
+info = data.result.info(repeat_index);
+end
+
+function fig = graph_plot_res(result_list, figure_prefix, matname, options)
+%PLOT_RES Plot selected error histories and export a PDF and PNG.
+% Each result contains method_name and res_hist. Optional matvec_hist gives
+% cumulative matrix-vector counts; otherwise the abscissa is the iteration.
+% options may set figure_size, axes_position, legend_location, legend_gap,
+% legend_right_padding, legend_token_size, font_size, legend_font_size,
+% line_width, marker_size, x_label, y_label, x_limits, x_ticks, and y_limits.
+% Three-argument callers use the standard presentation settings.
+
+if nargin < 4
+    options = struct;
+end
+figure_size = graph_plot_option(options, "figure_size", [1200, 850]);
+legend_location = graph_plot_option(options, "legend_location", "northeast");
+legend_gap = graph_plot_option(options, "legend_gap", 50);
+legend_right_padding = graph_plot_option(options, "legend_right_padding", 40);
+x_label = graph_plot_option(options, "x_label", "iteration");
+y_label = graph_plot_option(options, "y_label", "relative error");
+
+axes_position = graph_plot_option(options, "axes_position", [250, 190, 847, 563]);
+font_size = graph_plot_option(options, "font_size", 80);
+legend_font_size = graph_plot_option(options, "legend_font_size", 0.8 * font_size);
+line_width = graph_plot_option(options, "line_width", 6);
+marker_size = graph_plot_option(options, "marker_size", 20);
+line_styles = ["-", "--", "-.", ":"];
+markers = ["o", "s", "^", "d", "v", ">", "<", "p"];
+method_colors = lines(numel(result_list));
+
+fig = figure("Color", "white", "Units", "pixels", ...
+    "Position", [100, 100, figure_size], "Renderer", "painters");
+ax = axes(fig, "Units", "pixels", "Position", axes_position, ...
+    "PositionConstraint", "innerposition", "FontSize", font_size, ...
+    "TickLabelInterpreter", "latex", "Box", "on");
+hold(ax, "on");
+positive_errors = [];
+
+for it_method = 1:numel(result_list)
+    result = result_list(it_method);
+    errors = result.res_hist(:);
+    if isfield(result, "matvec_hist") && ~isempty(result.matvec_hist)
+        x_values = result.matvec_hist(:);
+    else
+        x_values = (1:numel(errors)).';
+    end
+    assert(numel(x_values) == numel(errors), ...
+        'The error history and abscissa must have the same length.');
+
+    marker_step = max(1, ceil(numel(errors) / 12));
+    marker_start = 1 + floor((it_method - 1) * marker_step / numel(result_list));
+    line_style = line_styles(1 + mod(it_method - 1, numel(line_styles)));
+    marker = markers(1 + mod(it_method - 1, numel(markers)));
+    display_name = replace(string(result.method_name), "_", "\_");
+    semilogy(ax, x_values, errors, "Color", method_colors(it_method, :), ...
+        "LineStyle", line_style, "LineWidth", line_width, "Marker", marker, ...
+        "MarkerSize", marker_size, "MarkerFaceColor", "none", ...
+        "MarkerIndices", marker_start:marker_step:numel(errors), ...
+        "DisplayName", display_name);
+    positive_errors = [positive_errors; errors(isfinite(errors) & errors > 0)]; %#ok<AGROW>
+end
+
+% Keep the reference decade ticks and extend them to include every error.
+lower_exponent = -10;
+upper_exponent = 0;
+if ~isempty(positive_errors)
+    lower_exponent = min(lower_exponent, 2 * floor(log10(min(positive_errors)) / 2));
+    upper_exponent = max(upper_exponent, 2 * ceil(log10(max(positive_errors)) / 2));
+end
+set(ax, "YScale", "log", "YTick", 10 .^ (lower_exponent:2:upper_exponent), ...
+    "YLim", [10 ^ lower_exponent, 10 ^ upper_exponent]);
+grid(ax, "off");
+if isfield(options, "y_limits")
+    ylim(ax, options.y_limits);
+end
+if isfield(options, "x_limits")
+    xlim(ax, options.x_limits);
+end
+if isfield(options, "x_ticks")
+    xticks(ax, options.x_ticks);
+end
+xtickangle(ax, 0);
+xlabel(ax, x_label, "Interpreter", "latex", "FontSize", font_size);
+ylabel(ax, y_label, "Interpreter", "latex", "FontSize", font_size);
+title_text = replace(replace(string(matname), "_", "\_"), " ", "\ ");
+title(ax, "$\mathrm{" + title_text + "}$", ...
+    "Interpreter", "latex", "FontSize", font_size, "FontWeight", "normal");
+lgd = legend(ax, "Interpreter", "latex", "FontSize", legend_font_size, ...
+    "Location", legend_location);
+if isfield(options, "legend_token_size")
+    lgd.ItemTokenSize = options.legend_token_size;
+end
+
+% Add only the margin needed by the chosen labels and font sizes.
+drawnow;
+set(ax, "Position", axes_position);
+drawnow;
+insets = ax.TightInset;
+axes_position(1:2) = max(axes_position(1:2), insets(1:2) + 25);
+ax.Position = axes_position;
+figure_position = fig.Position;
+figure_position(3:4) = max(figure_position(3:4), ...
+    axes_position(1:2) + axes_position(3:4) + insets(3:4) + 25);
+fig.Position = figure_position;
+
+% An outside legend must not reduce the requested plotting area.
+if strcmpi(legend_location, "eastoutside")
+    drawnow;
+    set(ax, "Units", "pixels", "Position", axes_position);
+    set(lgd, "Units", "pixels");
+    legend_position = lgd.Position;
+    legend_position(1) = axes_position(1) + axes_position(3) + legend_gap;
+    legend_position(2) = axes_position(2) + (axes_position(4) - legend_position(4)) / 2;
+    lgd.Position = legend_position;
+    figure_position = fig.Position;
+    figure_position(3) = max(figure_position(3), ...
+        legend_position(1) + legend_position(3) + legend_right_padding);
+    fig.Position = figure_position;
+end
+drawnow;
+
+% print supports this full-canvas export on MATLAB R2023b.
+figure_path = fileparts(figure_prefix);
+if strlength(string(figure_path)) > 0 && ~isfolder(figure_path)
+    mkdir(figure_path);
+end
+pixels_per_inch = get(groot, "ScreenPixelsPerInch");
+paper_size = fig.Position(3:4) / pixels_per_inch;
+set(fig, "PaperUnits", "inches", "PaperSize", paper_size, ...
+    "PaperPosition", [0, 0, paper_size], "PaperPositionMode", "manual");
+print(fig, char(string(figure_prefix) + ".pdf"), "-dpdf", "-painters");
+print(fig, char(string(figure_prefix) + ".png"), "-dpng", "-r300");
+end
+
+function value = graph_plot_option(options, name, default_value)
+if isfield(options, name)
+    value = options.(name);
+else
+    value = default_value;
+end
+end

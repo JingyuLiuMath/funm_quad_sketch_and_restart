@@ -1,9 +1,0 @@
-function row = summarize_run(label, info)
-%SUMMARIZE_RUN Normalize a selected run for the shared results table.
-% m_act is the mean actual Krylov dimension across restart cycles.
-
-row = struct('method_name', string(label), 'error', info.final_err, ...
-    'time', info.t_total, 'n_iter', info.iter, ...
-    'n_matvec', sum(info.num_oracle(:)), ...
-    'm_act', mean(info.dim(:)));
-end

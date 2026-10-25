@@ -1,4 +1,133 @@
-function plot_ratio_bars(ratios, time_names, bar_labels, figure_prefix, figure_title, y_label, group_names, options)
+exp_graph_laplacian_invsqrt_settings;
+
+% Compare the average Arnoldi call cost for every method in each family.
+selection.data_path = data_path;
+selection.file_prefix = "frac_laplacian_invsqrt";
+selection.krylov_dim = 150;
+selection.thick = false;
+group_names = ["Arnoldi", "HmArnoldi"];
+method_groups = ["arnoldi", "sarnoldi", "last_orth"; ...
+                 "hmarnoldi", "shmarnoldi", "last_hmorth"];
+method_labels = ["Arn", "sArn", "adaArn"; ...
+                 "HmArn", "sHmArn", "adaHmArn"];
+
+for sfactor = sfactor_list
+    selection.sfactor = sfactor;
+    for group_index = 1:numel(group_names)
+        baseline = graph_read_median_run(selection, "fixed", ...
+            method_groups(group_index, 1), inf);
+        baseline_time = baseline.arnoldi_info.t_total / baseline.iter;
+        result_list = struct('method_name', {}, 'group_name', {}, 'info', {});
+        for method_index = 1:3
+            method = method_groups(group_index, method_index);
+            label = method_labels(group_index, method_index);
+            if method_index <= 2
+                if ~ismember(method, fixed_method_list)
+                    continue
+                end
+                mode = "fixed";
+                truncations = inf;
+            else
+                if selection.krylov_dim ~= adaptive_krylov_dim ...
+                        || ~ismember(method, adaptive_update_list)
+                    continue
+                end
+                mode = "adaptive";
+                truncations = truncation_length_list;
+            end
+            for truncation_length = truncations
+                info = graph_read_median_run(selection, mode, method, truncation_length);
+                method_name = label;
+                if mode == "adaptive"
+                    method_name = label + "-" + string(truncation_length);
+                end
+                result_list(end + 1) = struct('method_name', method_name, ...
+                    'group_name', group_names(group_index), 'info', info);
+            end
+        end
+        if isempty(result_list)
+            continue
+        end
+
+        figure_prefix = fullfile(figure_path, "graph_laplacian_invsqrt_arnoldi_ratios_" ...
+            + lower(group_names(group_index)) ...
+            + "_krylov_dim_" + string(selection.krylov_dim) ...
+            + "_sfactor_" + string(sfactor));
+        figure_title = "Graph Laplacian";
+        graph_plot_ratios_arnoldi(result_list, figure_prefix, figure_title, ...
+            baseline_time, method_labels(group_index, 1));
+    end
+end
+
+% Local helpers keep this Graph Laplacian plot independent of other examples.
+function info = graph_read_median_run(selection, mode, method, truncation_length)
+%READ_MEDIAN_RUN Load the run with median total runtime for a configuration.
+% selection supplies data_path, file_prefix, krylov_dim, sfactor, and thick.
+% All reported values come from the same selected repeat.
+
+mode = string(mode);
+method = string(method);
+factor = selection.sfactor;
+if mode == "fixed" && ismember(method, ["arnoldi", "hmarnoldi"])
+    factor = 0;
+end
+file_name = string(selection.file_prefix) + "_" + mode + "_" + method ...
+    + "_krylov_dim_" + string(selection.krylov_dim) ...
+    + "_sfactor_" + string(factor) ...
+    + "_thick_" + string(double(selection.thick));
+if mode == "adaptive"
+    file_name = file_name + "_trunc_" + string(truncation_length);
+end
+data = load(fullfile(selection.data_path, file_name + ".mat"), "result");
+repeat_index = find(data.result.t_list == median(data.result.t_list), 1);
+info = data.result.info(repeat_index);
+end
+
+function graph_plot_ratios_arnoldi(result_list, figure_prefix, figure_title, baseline_time, baseline_name)
+% Compare fixed and adaptive methods using average time per Arnoldi call.
+% Baselines are shared or supplied separately for each method.
+
+if nargin < 5
+    baseline_name = "Arn";
+end
+
+if isscalar(baseline_time)
+    baseline_time = repmat(baseline_time, numel(result_list), 1);
+else
+    assert(numel(baseline_time) == numel(result_list), ...
+        'Provide one baseline time per result, or a scalar baseline.');
+    baseline_time = baseline_time(:);
+end
+
+if isempty(result_list)
+    return
+end
+
+time_names = ["Apply operator", "Apply sketch", "Coefficients", ...
+    "Subtraction", "Rank-1 update", "Other"];
+ratios = zeros(numel(result_list), numel(time_names));
+bar_labels = strings(1, numel(result_list));
+group_names = strings(1, numel(result_list));
+for it_result = 1 : numel(result_list)
+    info = result_list(it_result).info;
+    arnoldi_info = info.arnoldi_info;
+    % The solver accumulates these times over info.iter Arnoldi calls.
+    ratios(it_result, :) = [arnoldi_info.t_apply_op, arnoldi_info.t_apply_sketch, ...
+        arnoldi_info.t_coeff, arnoldi_info.t_substract, ...
+        arnoldi_info.t_update, arnoldi_info.t_other] / info.iter / baseline_time(it_result);
+    bar_labels(it_result) = result_list(it_result).method_name;
+    if isfield(result_list, 'group_name')
+        group_names(it_result) = result_list(it_result).group_name;
+    end
+end
+
+y_label = "run time relative to " + string(baseline_name);
+graph_plot_ratio_bars(ratios, time_names, bar_labels, figure_prefix, ...
+    figure_title, y_label, group_names);
+
+end
+
+function graph_plot_ratio_bars(ratios, time_names, bar_labels, figure_prefix, figure_title, y_label, group_names, options)
 %PLOT_RATIO_BARS Draw timing parts relative to shared or per-group baselines.
 % The input already contains the desired ratios; do not normalize each bar.
 % Optional group_names inserts space and a divider between consecutive groups.
