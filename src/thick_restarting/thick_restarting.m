@@ -1,22 +1,22 @@
-function [arnoldi_data, nodes, num_thick] = ...
-    thick_restarting(arnoldi_data, nodes, number_thick, use_sketch)
+function [V, H, SV, nodes, num_thick] = ...
+    thick_restarting(h, V, H, SV, nodes, number_thick, use_sketch)
 %THICK_RESTARTING Retain a Schur subspace and seed the next Arnoldi cycle.
 % For Arnoldi and sketched Arnoldi; harmonic duals are not supported.
 % H is returned as a (num_thick + 1)-by-num_thick seed matrix.
-% The remainder v and its optional sketch sv retain their incoming scaling.
+% The caller keeps the remainder v and its optional sketch sv unchanged.
 
-m_prev = size(arnoldi_data.H, 1);
-if isreal(arnoldi_data.H)
-    [U, T] = schur(arnoldi_data.H, 'real');
+m_prev = size(H, 1);
+if isreal(H)
+    [U, T] = schur(H, 'real');
 else
-    [U, T] = schur(arnoldi_data.H, 'complex');
+    [U, T] = schur(H, 'complex');
 end
 [num_thick, U, ~, evT] = thick_quad(U, T, ordeig(T), number_thick);
 U = U(:, 1 : num_thick);
-arnoldi_data.V = arnoldi_data.V * U;
-arnoldi_data.H = [U' * arnoldi_data.H * U; arnoldi_data.h * U(end, :)];
+V = V * U;
+H = [U' * H * U; h * U(end, :)];
 if use_sketch
-    arnoldi_data.SV = arnoldi_data.SV * U;
+    SV = SV * U;
 end
 
 % Retained roots move to the tail and are replaced by the next cycle's

@@ -8,7 +8,7 @@ if has_exact
     norm_exact = norm(param.exact);
 end
 
-f = zeros(size(b));
+f = zeros(size(b), 'like', b);
 
 info = struct();
 info.param = param;
@@ -61,10 +61,10 @@ end
 m = param.krylov_dim;
 num_quad = min(32, param.max_num_quad_points);
 
-arnoldi_data = struct();
-arnoldi_data.v = b;
+v = b;
+SV = [];
 if use_sketch
-    arnoldi_data.sv = S_op(b);
+    sv = S_op(b);
 end
 beta_acc = 1;
 nodes = [];
@@ -74,45 +74,50 @@ for k = 1 : param.max_restarts
     num_thick = 0;
     if k > 1 && param.thick
         t_thick_start = tic;
-        [arnoldi_data, nodes, num_thick] = ...
-            thick_restarting(arnoldi_data, nodes, param.number_thick, use_sketch);
+        [V, H, SV, nodes, num_thick] = ...
+            thick_restarting(h, V, H, SV, nodes, param.number_thick, use_sketch);
         info.t_thick = info.t_thick + toc(t_thick_start);
     end
 
     m_total = m + num_thick;
     start_ind = num_thick + 1;
     if num_thick == 0
-        arnoldi_data.V = zeros(N, 0);
-        arnoldi_data.H = [];
+        V = [];
+        H = [];
         if use_sketch
-            s = size(arnoldi_data.sv, 1);
-            arnoldi_data.SV = zeros(s, 0);
+            s = size(sv, 1);
+            SV = zeros(s, 0, 'like', sv);
         end
     end
 
     num_resketch = 0;
     if is_adaptive
-        [S_op, m_now, arnoldi_data, succ_flag, num_oracle, num_resketch, arnoldi_info] = ...
-            arnoldi_adaptive(S_op, A, arnoldi_data, m_total, start_ind, param);
+        [beta, v, V, sv, SV, h, H, S_op, m_now, ...
+            succ_flag, num_oracle, num_resketch, arnoldi_info] = ...
+            arnoldi_adaptive(S_op, A, v, V, sv, SV, H, ...
+            m_total, start_ind, param);
         if k == 1
             m = m_now;
         end
     else
         switch param.arnoldi
             case "arnoldi"
-                [arnoldi_data, succ_flag, num_oracle, arnoldi_info] = ...
-                    arnoldi_fix(A, arnoldi_data, m_total, start_ind, param);
+                [beta, v, V, h, H, succ_flag, num_oracle, arnoldi_info] = ...
+                    arnoldi_fix(A, v, V, H, m_total, start_ind, param);
             case "hmarnoldi"
-                [arnoldi_data, succ_flag, num_oracle, arnoldi_info] = ...
-                    hmarnoldi_fix(A, arnoldi_data, m_total, start_ind, param);
+                [beta, v, V, h, H, succ_flag, num_oracle, arnoldi_info] = ...
+                    hmarnoldi_fix(A, v, m_total, param);
             case "sarnoldi"
-                [arnoldi_data, succ_flag, num_oracle, arnoldi_info] = ...
-                    sarnoldi_fix(S_op, A, arnoldi_data, m_total, start_ind, param);
+                [beta, v, V, sv, SV, h, H, ...
+                    succ_flag, num_oracle, arnoldi_info] = ...
+                    sarnoldi_fix(S_op, A, v, V, sv, SV, H, ...
+                    m_total, start_ind, param);
             case "shmarnoldi"
-                [arnoldi_data, succ_flag, num_oracle, arnoldi_info] = ...
-                    shmarnoldi_fix(S_op, A, arnoldi_data, m_total, start_ind, param);
+                [beta, v, V, sv, SV, h, H, ...
+                    succ_flag, num_oracle, arnoldi_info] = ...
+                    shmarnoldi_fix(S_op, A, v, sv, SV, m_total, param);
         end
-        m_now = size(arnoldi_data.H, 1);
+        m_now = size(H, 1);
     end
     info.arnoldi_info.t_total = info.arnoldi_info.t_total + arnoldi_info.t_total;
     info.t_arnoldi = info.arnoldi_info.t_total;
@@ -138,25 +143,25 @@ for k = 1 : param.max_restarts
         break
     end
 
-    beta_acc = beta_acc * arnoldi_data.beta;
+    beta_acc = beta_acc * beta;
     rhs = zeros(m_now, 1);
     rhs(start_ind) = beta_acc;
     if k == 1
         t_funm_init_start = tic;
-        f_small = initial_action(arnoldi_data.H, rhs);
+        f_small = initial_action(H, rhs);
         info.t_funm_init = info.t_funm_init + toc(t_funm_init_start);
         num_quad_used = 0;
         quad_converged = true;
     else
         t_funm_quad_start = tic;
         [f_small, num_quad_used, quad_converged, num_quad] = ...
-            refine_quadrature(arnoldi_data.H, rhs, nodes, subdiag, ...
+            refine_quadrature(H, rhs, nodes, subdiag, ...
             num_quad, param, quad_action);
         info.t_funm_quad = info.t_funm_quad + toc(t_funm_quad_start);
     end
 
     t_update_start = tic;
-    f_update = arnoldi_data.V * f_small;
+    f_update = V * f_small;
     f = f + f_update;
     info.update_norm(k) = norm(f_update);
     conv_flag = info.update_norm(k) / norm(f) < param.stopping_accuracy;
@@ -172,11 +177,11 @@ for k = 1 : param.max_restarts
     end
     if k < param.max_restarts
         % Retained roots are replaced; only new-step factors are appended.
-        nodes = [nodes(1 : end - num_thick); eig(arnoldi_data.H)];
-        H_new = arnoldi_data.H(start_ind : m_now, start_ind : m_now);
+        nodes = [nodes(1 : end - num_thick); eig(H)];
+        H_new = H(start_ind : m_now, start_ind : m_now);
         num_new = m_now - num_thick;
         subdiag = [subdiag; ...
-            H_new(2 : (num_new + 1) : end).'; arnoldi_data.h];
+            H_new(2 : (num_new + 1) : end).'; h];
     end
 end
 
