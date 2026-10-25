@@ -1,6 +1,10 @@
-function plot_ratios_arnoldi(result_list, figure_prefix, figure_title, baseline_time)
+function plot_ratios_arnoldi(result_list, figure_prefix, figure_title, baseline_time, baseline_name)
 % Compare fixed and adaptive methods using average time per Arnoldi call.
 % Baselines are shared or supplied separately for each method.
+
+if nargin < 5
+    baseline_name = "Arn";
+end
 
 if isscalar(baseline_time)
     baseline_time = repmat(baseline_time, numel(result_list), 1);
@@ -32,7 +36,7 @@ for it_result = 1 : numel(result_list)
     end
 end
 
-y_label = "run time relative to Arn";
+y_label = "run time relative to " + string(baseline_name);
 plot_ratio_bars(ratios, time_names, bar_labels, figure_prefix, ...
     figure_title, y_label, group_names);
 
