@@ -1,4 +1,4 @@
-function arnoldi_data = arnoldi_last_hmorth_update(arnoldi_data)
+function [v, sv, h, H] = arnoldi_last_hmorth_update(v, h, V, H, sv, SV)
 
 % Let V, v, H, h denote the input data, with real h and
 %     A*V = V*H + h*v*em'.
@@ -16,28 +16,28 @@ function arnoldi_data = arnoldi_last_hmorth_update(arnoldi_data)
 %     c = R11\(r + M\(h*abs(rho)^2*em)).
 %
 
-m = size(arnoldi_data.H, 1);
+m = size(H, 1);
 em = zeros(m, 1);
 em(m) = 1;
-[~, R] = qr([arnoldi_data.V(:, 1 : m), arnoldi_data.v], 'econ');
+[~, R] = qr([V, v], 'econ');
 R11 = R(1 : m, 1 : m);
 r = R(1 : m, end);
 rho = R(end, end);
-M = arnoldi_data.H' * R11' + arnoldi_data.h * (em * r');
-c = R11 \ (r + M \ (arnoldi_data.h * abs(rho)^2 * em));
+M = H' * R11' + h * (em * r');
+c = R11 \ (r + M \ (h * abs(rho)^2 * em));
 
-arnoldi_data.v = arnoldi_data.v - arnoldi_data.V(:, 1 : m) * c;
-arnoldi_data.sv = arnoldi_data.sv - arnoldi_data.SV * c;
-arnoldi_data.H(1 : m, m) = arnoldi_data.H(1 : m, m) + c * arnoldi_data.h;
-norm_v = norm(arnoldi_data.v);
+v = v - V * c;
+sv = sv - SV * c;
+H(1 : m, m) = H(1 : m, m) + c * h;
+norm_v = norm(v);
 if norm_v == 0
-    arnoldi_data.v(:) = 0;
-    arnoldi_data.sv(:) = 0;
-    arnoldi_data.h = 0;
+    v(:) = 0;
+    sv(:) = 0;
+    h = 0;
 else
-    arnoldi_data.v = arnoldi_data.v / norm_v;
-    arnoldi_data.sv = arnoldi_data.sv / norm_v;
-    arnoldi_data.h = arnoldi_data.h * norm_v;
+    v = v / norm_v;
+    sv = sv / norm_v;
+    h = h * norm_v;
 end
 
 end
