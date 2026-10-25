@@ -1,8 +1,7 @@
-function [arnoldi_data, succ_flag, num_oracle, arnoldi_info] = ...
-    hmarnoldi_fix(A, arnoldi_data, m, start_ind, param)
+function [beta, v, V, h, H, succ_flag, num_oracle, arnoldi_info] = ...
+    hmarnoldi_fix(A, v, m, param)
 
-assert(start_ind == 1, "Thick restarting is not supported " + ...
-    "for harmonic Arnoldi process!");
+% Harmonic Arnoldi always starts from the first basis vector.
 
 if ~isa(A, 'function_handle')
     op_A = @(x) A * x;
@@ -19,73 +18,71 @@ arnoldi_info.t_update = 0;
 arnoldi_info.t_other = 0;
 
 t_total_start = tic;
-arnoldi_data.H(m + 1, m) = 0;
-if size(arnoldi_data.V, 2) < m
-    arnoldi_data.V(:, m) = 0;
-end
-Z = zeros(size(arnoldi_data.v, 1), m);
+V = zeros(size(v, 1), m, 'like', v);
+H = zeros(m, m, 'like', v);
+Z = zeros(size(v, 1), m, 'like', v);
 trunc = param.truncation_length;
 succ_flag = true;
 num_oracle = 0;
-m_init = start_ind - 1;
 
-arnoldi_data.beta = norm(arnoldi_data.v);
-if arnoldi_data.beta == 0
+beta = norm(v);
+if beta == 0
     succ_flag = false;
-    arnoldi_data.h = 0;
-    arnoldi_data.H = arnoldi_data.H(1 : m_init, 1 : m_init);
-    arnoldi_data.V = arnoldi_data.V(:, 1 : m_init);
+    h = 0;
+    H = H([], []);
+    V = V(:, []);
     arnoldi_info.t_total = toc(t_total_start);
     arnoldi_info.t_other = arnoldi_info.t_total - ...
         (arnoldi_info.t_apply_op + arnoldi_info.t_apply_sketch + ...
         arnoldi_info.t_coeff + arnoldi_info.t_substract + arnoldi_info.t_update);
     return
 end
-arnoldi_data.v = arnoldi_data.v / arnoldi_data.beta;
-arnoldi_data.V(:, start_ind) = arnoldi_data.v;
-arnoldi_data.H(start_ind, 1 : m_init) = arnoldi_data.beta * arnoldi_data.H(start_ind, 1 : m_init);
+v = v / beta;
+V(:, 1) = v;
 
-for j = start_ind : m
+for j = 1 : m
     t_apply_op_start = tic;
-    arnoldi_data.v = op_A(arnoldi_data.v);
+    v = op_A(v);
     arnoldi_info.t_apply_op = arnoldi_info.t_apply_op + toc(t_apply_op_start);
     num_oracle = num_oracle + 1;
 
-    rho = arnoldi_data.v' * arnoldi_data.V(:, j);
-    if abs(rho) <= eps * norm(arnoldi_data.v) * norm(arnoldi_data.V(:, j))
+    rho = v' * V(:, j);
+    if abs(rho) <= eps * norm(v) * norm(V(:, j))
         succ_flag = false;
+        h = 0;
         m = j;
-        arnoldi_data.H(j + 1, j) = 0;
         break
     end
-    Z(:, j) = arnoldi_data.v / conj(rho);
-    
+    Z(:, j) = v / conj(rho);
+
     for i = max(1, j - trunc + 1) : j
         t_coeff_start = tic;
-        h_i_j = Z(:, i)' * arnoldi_data.v;
-        arnoldi_data.H(i, j) = arnoldi_data.H(i, j) + h_i_j;
+        h_i_j = Z(:, i)' * v;
+        H(i, j) = H(i, j) + h_i_j;
         arnoldi_info.t_coeff = arnoldi_info.t_coeff + toc(t_coeff_start);
         t_substract_start = tic;
-        arnoldi_data.v = arnoldi_data.v - arnoldi_data.V(:, i) * h_i_j;
+        v = v - V(:, i) * h_i_j;
         arnoldi_info.t_substract = arnoldi_info.t_substract + toc(t_substract_start);
     end
 
-    arnoldi_data.H(j + 1, j) = norm(arnoldi_data.v);
-    if abs(arnoldi_data.H(j + 1, j)) <= j * eps * norm(arnoldi_data.H(1 : j + 1, j))
+    h = norm(v);
+    if abs(h) <= j * eps * norm([H(1 : j, j); h])
         succ_flag = false;
         m = j;
         break
     end
 
-    arnoldi_data.v = arnoldi_data.v / arnoldi_data.H(j + 1, j);
+    v = v / h;
     if j < m
-        arnoldi_data.V(:, j + 1) = arnoldi_data.v;
+        H(j + 1, j) = h;
+        V(:, j + 1) = v;
     end
 end
 
-arnoldi_data.h = arnoldi_data.H(m + 1, m);
-arnoldi_data.H = arnoldi_data.H(1 : m, 1 : m);
-arnoldi_data.V = arnoldi_data.V(:, 1 : m);
+if ~succ_flag && m < size(H, 1)
+    H = H(1 : m, 1 : m);
+    V = V(:, 1 : m);
+end
 
 arnoldi_info.t_total = toc(t_total_start);
 arnoldi_info.t_other = arnoldi_info.t_total - ...
