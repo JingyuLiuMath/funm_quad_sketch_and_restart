@@ -242,17 +242,14 @@ if has_groups
 else
     ylim(ax, [0, 1.05 * maximum_height]);
 end
-if paired_bars
-    target_step = ax.YLim(2) / 4;
-    tick_scale = 10 ^ floor(log10(target_step));
-    tick_steps = [1, 2, 2.5, 5, 10] * tick_scale;
-    tick_step = tick_steps(find(tick_steps >= target_step, 1));
-    upper_tick = ceil(ax.YLim(2) / tick_step) * tick_step;
-    ylim(ax, [0, upper_tick]);
-    y_ticks = 0:tick_step:upper_tick;
-else
-    y_ticks = 0:0.2:ax.YLim(2);
-end
+% Limit tick density for every bar layout, including ratios well above 100%.
+target_step = ax.YLim(2) / 5;
+tick_scale = 10 ^ floor(log10(target_step));
+tick_steps = [1, 2, 2.5, 5, 10] * tick_scale;
+tick_step = tick_steps(find(tick_steps >= target_step, 1));
+upper_tick = ceil(ax.YLim(2) / tick_step) * tick_step;
+ylim(ax, [0, upper_tick]);
+y_ticks = 0:tick_step:upper_tick;
 yticks(ax, y_ticks);
 yticklabels(ax, string(round(100 * y_ticks)) + "\%");
 if paired_bars
