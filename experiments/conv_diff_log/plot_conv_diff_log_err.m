@@ -1,70 +1,103 @@
 exp_conv_diff_log_settings;
 
-for krylov_dim = krylov_dim_list
-    mode_list = ["fixed", "adaptive"];
-    for sfactor = sfactor_list
-        for mode = mode_list
-            if mode == "adaptive" && krylov_dim ~= adaptive_krylov_dim
-                continue
-            end
-            for thick = thick_list
-                result_list = struct([]);
-                it_result = 0;
-                if mode == "fixed"
-                    for it_method = 1:numel(fixed_method_list)
-                        method = fixed_method_list(it_method);
-                        if thick && (method == "hmarnoldi" || method == "shmarnoldi")
-                            continue
-                        end
-                        factor = sfactor;
-                        if method == "arnoldi" || method == "hmarnoldi"
-                            factor = 0;
-                        end
-                        file_name = "conv_diff_log_" + mode + "_" + method ...
-                            + "_krylov_dim_" + string(krylov_dim) ...
-                            + "_sfactor_" + string(factor) ...
-                            + "_thick_" + string(double(thick)) + ".mat";
-                        load(data_path + file_name, "result");
-                        it_repeat = find(result.t_list == median(result.t_list), 1);
-                        info = result.info(it_repeat);
-                        it_result = it_result + 1;
-                        result_list(it_result).method_name = method;
-                        result_list(it_result).res_hist = info.err_history;
-                        result_list(it_result).method_index = it_method;
-                        result_list(it_result).truncation_index = 1;
-                    end
-                else
-                    for it_method = 1:numel(adaptive_update_list)
-                        method = adaptive_update_list(it_method);
-                        factor = sfactor;
-                        for it_trunc = 1:numel(truncation_length_list)
-                            truncation_length = truncation_length_list(it_trunc);
-                            file_name = "conv_diff_log_" + mode + "_" + method ...
-                                + "_krylov_dim_" + string(krylov_dim) ...
-                                + "_sfactor_" + string(factor) ...
-                                + "_thick_" + string(double(thick)) ...
-                                + "_trunc_" + string(truncation_length) + ".mat";
-                            load(data_path + file_name, "result");
-                            it_repeat = find(result.t_list == median(result.t_list), 1);
-                            info = result.info(it_repeat);
-                            it_result = it_result + 1;
-                            result_list(it_result).method_name = method + ", trunc=" + string(truncation_length);
-                            result_list(it_result).res_hist = info.err_history;
-                            result_list(it_result).method_index = it_method;
-                            result_list(it_result).truncation_index = it_trunc;
-                        end
-                    end
+% Use the same selected runs and method names as the convection-diffusion table.
+selection.data_path = data_path;
+selection.file_prefix = "conv_diff_log";
+% Show only m = 200 for fixed methods; adaptive methods use their configured maximum.
+fixed_krylov_dim = 200;
+selection.thick = false;
+group_names = ["arnoldi", "hmarnoldi"];
+method_groups = ["arnoldi", "sarnoldi", "last_orth"; ...
+                 "hmarnoldi", "shmarnoldi", "last_hmorth"];
+method_labels = ["Arn", "sArn", "adaArn"; ...
+                 "HmArn", "sHmArn", "adaHmArn"];
+
+% Enlarge the plotting area for two figures placed side by side in LaTeX.
+plot_options.figure_size = [2300, 1650];
+plot_options.axes_position = [480, 400, 1100, 900];
+plot_options.font_size = 128;
+plot_options.legend_font_size = 104;
+plot_options.line_width = 12;
+plot_options.marker_size = 40;
+plot_options.legend_location = "eastoutside";
+plot_options.legend_gap = 25;
+plot_options.legend_token_size = [80, 60];
+plot_options.x_label = "number of matrix-vector products";
+plot_options.y_label = "relative error";
+plot_options.y_limits = [1e-12, 1];
+plot_options.y_ticks = 10 .^ (-12:2:0);
+
+for sfactor = sfactor_list
+    selection.sfactor = sfactor;
+    for group_index = 1:numel(group_names)
+        result_list = struct('method_name', {}, 'res_hist', {}, 'matvec_hist', {});
+        for method_index = 1:3
+            method = method_groups(group_index, method_index);
+            label = method_labels(group_index, method_index);
+            if method_index <= 2
+                if ~ismember(method, fixed_method_list)
+                    continue
                 end
-                file_name = "conv_diff_log_res_" + mode ...
-                    + "_krylov_dim_" + string(krylov_dim) ...
-                    + "_sfactor_" + string(sfactor) ...
-                    + "_thick_" + string(double(thick));
-                figure_title = mode + ", sfactor=" + string(sfactor) + ", thick=" + string(double(thick)) ...
-                    + ", krylov_dim=" + string(krylov_dim);
-                conv_plot_res(result_list, figure_path + file_name, figure_title);
+                selection.krylov_dim = fixed_krylov_dim;
+                mode = "fixed";
+                truncations = inf;
+            else
+                if ~ismember(method, adaptive_update_list)
+                    continue
+                end
+                selection.krylov_dim = adaptive_krylov_dim;
+                mode = "adaptive";
+                truncations = truncation_length_list;
+            end
+            for truncation_length = truncations
+                info = conv_read_median_run(selection, mode, method, truncation_length);
+                result.method_name = label;
+                if mode == "adaptive"
+                    result.method_name = label + "-" + string(truncation_length);
+                end
+                result.res_hist = info.err_history(:).';
+                result.matvec_hist = cumsum(info.num_oracle(:)).';
+                result_list(end + 1) = result;
             end
         end
+        if isempty(result_list)
+            continue
+        end
+        % Four readable ticks, with room beyond the last matvec count.
+        max_matvec = max([result_list.matvec_hist]);
+        target_step = max(1, 1.03 * max_matvec / 3);
+        step_scale = 10 ^ floor(log10(target_step));
+        tick_step = ceil(target_step / step_scale) * step_scale;
+        plot_options.x_limits = [0, 3 * tick_step];
+        plot_options.x_ticks = 0:tick_step:3 * tick_step;
+        figure_prefix = fullfile(figure_path, "conv_diff_log_err_" ...
+            + group_names(group_index) + "_sfactor_" + string(sfactor));
+        conv_plot_res(result_list, figure_prefix, "Conv-Diff", plot_options);
     end
+end
+
+% Local helpers keep this Convection-diffusion plot independent of other examples.
+function info = conv_read_median_run(selection, mode, method, truncation_length)
+%READ_MEDIAN_RUN Load the run with median total runtime for a configuration.
+% selection supplies data_path, file_prefix, krylov_dim, sfactor, and thick.
+% All reported values come from the same selected repeat.
+
+mode = string(mode);
+method = string(method);
+factor = selection.sfactor;
+if mode == "fixed" && ismember(method, ["arnoldi", "hmarnoldi"])
+    factor = 0;
+end
+file_name = string(selection.file_prefix) + "_" + mode + "_" + method ...
+    + "_krylov_dim_" + string(selection.krylov_dim) ...
+    + "_sfactor_" + string(factor) ...
+    + "_thick_" + string(double(selection.thick));
+if mode == "adaptive"
+    file_name = file_name + "_trunc_" + string(truncation_length);
+end
+data = load(fullfile(selection.data_path, file_name + ".mat"), "result");
+repeat_index = find(data.result.t_list == median(data.result.t_list), 1);
+info = data.result.info(repeat_index);
 end
 
 function fig = conv_plot_res(result_list, figure_prefix, matname, options)
@@ -73,7 +106,7 @@ function fig = conv_plot_res(result_list, figure_prefix, matname, options)
 % cumulative matrix-vector counts; otherwise the abscissa is the iteration.
 % options may set figure_size, axes_position, legend_location, legend_gap,
 % legend_right_padding, legend_token_size, font_size, legend_font_size,
-% line_width, marker_size, x_label, y_label, x_limits, x_ticks, and y_limits.
+% line_width, marker_size, x_label, y_label, x_limits, x_ticks, y_limits, and y_ticks.
 % Three-argument callers use the standard presentation settings.
 
 if nargin < 4
@@ -101,7 +134,6 @@ ax = axes(fig, "Units", "pixels", "Position", axes_position, ...
     "PositionConstraint", "innerposition", "FontSize", font_size, ...
     "TickLabelInterpreter", "latex", "Box", "on");
 hold(ax, "on");
-positive_errors = [];
 
 for it_method = 1:numel(result_list)
     result = result_list(it_method);
@@ -124,22 +156,13 @@ for it_method = 1:numel(result_list)
         "MarkerSize", marker_size, "MarkerFaceColor", "none", ...
         "MarkerIndices", marker_start:marker_step:numel(errors), ...
         "DisplayName", display_name);
-    positive_errors = [positive_errors; errors(isfinite(errors) & errors > 0)]; %#ok<AGROW>
 end
 
-% Keep the reference decade ticks and extend them to include every error.
-lower_exponent = -10;
-upper_exponent = 0;
-if ~isempty(positive_errors)
-    lower_exponent = min(lower_exponent, 2 * floor(log10(min(positive_errors)) / 2));
-    upper_exponent = max(upper_exponent, 2 * ceil(log10(max(positive_errors)) / 2));
-end
-set(ax, "YScale", "log", "YTick", 10 .^ (lower_exponent:2:upper_exponent), ...
-    "YLim", [10 ^ lower_exponent, 10 ^ upper_exponent]);
+% Keep both method families on the requested 10^0 to 10^-12 error scale.
+set(ax, "YScale", "log", ...
+    "YLim", conv_plot_option(options, "y_limits", [1e-12, 1]), ...
+    "YTick", conv_plot_option(options, "y_ticks", 10 .^ (-12:2:0)));
 grid(ax, "off");
-if isfield(options, "y_limits")
-    ylim(ax, options.y_limits);
-end
 if isfield(options, "x_limits")
     xlim(ax, options.x_limits);
 end
@@ -147,6 +170,8 @@ if isfield(options, "x_ticks")
     xticks(ax, options.x_ticks);
 end
 xtickangle(ax, 0);
+% Show full counts so MATLAB's scientific-notation multiplier cannot cover the xlabel.
+ax.XAxis.Exponent = 0;
 xlabel(ax, x_label, "Interpreter", "latex", "FontSize", font_size);
 ylabel(ax, y_label, "Interpreter", "latex", "FontSize", font_size);
 title_text = replace(replace(string(matname), "_", "\_"), " ", "\ ");
